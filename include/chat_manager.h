@@ -22,6 +22,15 @@ namespace spiritsaway::system::chat
 		void fetch_history(const std::string& chat_key, std::uint32_t seq_begin, std::uint32_t seq_end, std::function<void(const std::vector<chat_record>&)> fetch_cb);
 		void fetch_history_num(const std::string& chat_key, std::function<void(std::uint32_t)>  fetch_cb);
 
+		std::uint32_t dirty_chat_num() const
+		{
+			return m_dirty_chat_datas.size();
+		}
+
+		std::uint32_t chat_data_num() const
+		{
+			return m_chat_datas.size();
+		}
 		std::vector<std::string> tick_save(std::uint32_t max_num);
 
 		std::vector<std::string> tick_expire(std::uint32_t max_num);
