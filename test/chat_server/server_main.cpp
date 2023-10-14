@@ -4,10 +4,7 @@
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/logger.h>
 using namespace spiritsaway::system::chat;
-namespace beast = boost::beast;         // from <boost/beast.hpp>
-namespace http = beast::http;           // from <boost/beast/http.hpp>
-namespace net = boost::asio;            // from <boost/asio.hpp>
-using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+
 using namespace spiritsaway::http_utils;
 std::shared_ptr<spdlog::logger> create_logger(const std::string& name)
 {
@@ -36,7 +33,6 @@ int main(int argc, char* argv[])
 	//}
 	std::string address_str = "127.0.0.1";
 	std::uint16_t port = 8080;
-	auto const address = net::ip::make_address(address_str);
 	std::uint8_t const threads = 2;
 	std::uint32_t expire_time = 10;
 	// The io_context is required for all I/O
@@ -66,9 +62,8 @@ int main(int argc, char* argv[])
 	// Create and launch a listening port
 	auto cur_listener = std::make_shared<chat_listener>(
 		ioc,
-		tcp::endpoint{ address, port },
 		cur_logger,
-		expire_time,
+		address_str, std::to_string(port) ,
 		cur_chat_manager, cur_sync_apdator);
 
 	cur_listener->run();

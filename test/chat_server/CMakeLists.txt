@@ -20,20 +20,7 @@ find_package(http_utils CONFIG REQUIRED)
 INCLUDE_DIRECTORIES(${http_utils_include_dirs})
 find_package(Threads REQUIRED)
 
-find_package (
-  Boost 1.71 REQUIRED COMPONENTS
-	system
-	thread
-	
-	)
-include_directories (${Boost_INCLUDE_DIRS})
-link_directories (${Boost_LIBRARY_DIRS})
-add_definitions (-DBOOST_ASIO_NO_DEPRECATED=1)
-add_definitions (-DBOOST_ASIO_DISABLE_BOOST_ARRAY=1)
-add_definitions (-DBOOST_ASIO_DISABLE_BOOST_BIND=1)
-add_definitions (-DBOOST_ASIO_DISABLE_BOOST_DATE_TIME=1)
-add_definitions (-DBOOST_ASIO_DISABLE_BOOST_REGEX=1)
 
 
 add_executable(chat_server ${CMAKE_CURRENT_SOURCE_DIR}/chat_server.cpp ${CMAKE_CURRENT_SOURCE_DIR}/server_main.cpp)
-target_link_libraries(chat_server PRIVATE chat http_utils ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(chat_server PRIVATE chat http_utils::http_server ${CMAKE_THREAD_LIBS_INIT})

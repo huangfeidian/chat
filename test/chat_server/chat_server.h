@@ -10,10 +10,9 @@ namespace spiritsaway::system::chat
 {
 	using namespace spiritsaway;
 	using json = nlohmann::json;
-	namespace beast = boost::beast;         // from <boost/beast.hpp>
-	namespace http = beast::http;           // from <boost/beast/http.hpp>
-	namespace net = boost::asio;            // from <boost/asio.hpp>
-	using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+
+	namespace net = asio;            // from <boost/asio.hpp>
+	using tcp = asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 	using logger_t = std::shared_ptr<spdlog::logger>;
 
 	class chat_db
@@ -35,48 +34,49 @@ namespace spiritsaway::system::chat
 		std::vector<std::pair<std::string, json::object_t>> find_one_results;
 	};
 
-	class chat_session : public http_utils::server::session
+	class chat_session :public std::enable_shared_from_this<chat_session>
 	{
 		chat_manager& m_chat_manager;
 		std::string from;
 		std::string chat_key;
 		std::string cur_cmd;
-		std::uint32_t seq_begin;
-		std::uint32_t seq_end;
+		std::uint32_t seq_begin = 0;
+		std::uint32_t seq_end = 0;
 		json::object_t msg;
 		json::object_t reply;
-		std::string check_request() override;
-		void route_request() override;
+		logger_t m_logger;
+		http_utils::request m_req;
+		http_utils::reply_handler m_rep_cb;
+		std::string check_request();
+		void route_request();
 
-		std::shared_ptr<boost::asio::steady_timer> expire_timer;
-		void on_timeout(const boost::system::error_code& e);
+
 
 		void finish_task_1();
 		void finish_task_2();
 
 	public:
-		chat_session(tcp::socket&& socket,
+		chat_session(const http_utils::request& req, http_utils::reply_handler rep_cb,
 			logger_t in_logger,
-			std::uint32_t in_expire_time, chat_manager& in_chat_manager);
+			 chat_manager& in_chat_manager);
+		void run();
 
 	};
 
-	class chat_listener : public http_utils::server::listener
+	class chat_listener : public http_utils::http_server
 	{
 	protected:
 		chat_manager& m_chat_manager;
 		chat_sync_adpator& m_sync_adaptor;
-		std::shared_ptr<boost::asio::steady_timer> tick_timer;
+		std::shared_ptr<asio::steady_timer> tick_timer;
 		std::uint64_t m_tick_counter = 0;
 		void tick();
+		net::io_context& m_ioc2;
 	public:
-		chat_listener(net::io_context& ioc,
-			tcp::endpoint endpoint,
-			logger_t in_logger,
-			std::uint32_t expire_time,
+		chat_listener(asio::io_context& io_context, std::shared_ptr<spdlog::logger> in_logger, const std::string& address, const std::string& port,
 			chat_manager& in_chat_manager,
 			chat_sync_adpator& in_sync_adaptor);
 
-		std::shared_ptr<http_utils::server::session> make_session(tcp::socket&& socket) override;
+		void handle_request(const http_utils::request& req, http_utils::reply_handler rep_cb) override;
 	};
 }

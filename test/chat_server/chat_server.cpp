@@ -106,32 +106,30 @@ namespace spiritsaway::system::chat
 			return doc;
 		}
 	}
-	chat_session::chat_session(tcp::socket&& socket,
-		logger_t in_logger,
-		std::uint32_t in_expire_time, chat_manager& in_chat_manager)
-		: http_utils::server::session(std::move(socket), std::move(in_logger), in_expire_time)
-		, m_chat_manager(in_chat_manager)
+	chat_session::chat_session(const http_utils::request& req, http_utils::reply_handler rep_cb,
+		logger_t in_logger, chat_manager& in_chat_manager)
+		: m_chat_manager(in_chat_manager)
+		, m_logger(in_logger)
+		, m_req(req)
+		, m_rep_cb(rep_cb)
+
 	{
 
 	}
 
 	std::string chat_session::check_request()
 	{
-		auto check_error = http_utils::server::session::check_request();
-		if (!check_error.empty())
-		{
-			return check_error;
-		}
-		if (!req_.target().starts_with("/chat"))
+
+		if (m_req.uri.rfind("/chat", 0) != 0)
 		{
 			return "request target must start with /chat";
 		}
-		if (!json::accept(req_.body()))
+		if (!json::accept(m_req.body))
 		{
-			logger->info("request is {}", req_.body());
+			m_logger->info("request is {}", m_req.body);
 			return "body must be json";
 		}
-		auto json_body = json::parse(req_.body());
+		auto json_body = json::parse(m_req.body);
 		if (!json_body.is_object())
 		{
 			return "body must be json object";
@@ -180,7 +178,7 @@ namespace spiritsaway::system::chat
 
 	void chat_session::route_request()
 	{
-		auto self = std::dynamic_pointer_cast<chat_session>(shared_from_this());
+		auto self = shared_from_this();
 		if (cur_cmd == "add")
 		{
 			m_chat_manager.add_msg(chat_key, from, msg, [self, this](std::uint32_t cur_seq)
@@ -210,67 +208,61 @@ namespace spiritsaway::system::chat
 			finish_task_2();
 			return;
 		}
-		beast::get_lowest_layer(stream_).expires_after(
-			std::chrono::seconds(expire_time));
-		expire_timer = std::make_shared<boost::asio::steady_timer>(stream_.get_executor(), std::chrono::seconds(expire_time / 2));
-		expire_timer->async_wait([self](const boost::system::error_code& e) {
-			self->on_timeout(e);
-			});
+
+
 	}
 
 	void chat_session::finish_task_1()
 	{
-		if (!expire_timer)
-		{
-			return;
-		}
+
 		finish_task_2();
 	}
 
 	void chat_session::finish_task_2()
 	{
-		expire_timer.reset();
-		logger->debug("finish seq {}", req_.body());
-		http::response<http::string_body> res{ http::status::ok, req_.version() };
-		res.set(http::field::server, BOOST_BEAST_VERSION_STRING);
-		res.set(http::field::content_type, "text/html");
-		res.keep_alive(req_.keep_alive());
-		res.body() = json(reply).dump();
-		res.prepare_payload();
-		do_write(std::move(res));
+		m_logger->debug("finish seq {}", m_req.body);
+		http_utils::reply res;
+		res.status_code = int(http_utils::reply::status_type::ok);
+		
+		res.add_header("Content-Type", "text/html");
+		res.content = json(reply).dump();
+		m_rep_cb(res);
 	}
 
-	void chat_session::on_timeout(const boost::system::error_code& e)
+	void chat_session::run()
 	{
-		if (e == boost::asio::error::operation_aborted)
+		auto cur_err = check_request();
+		if (!cur_err.empty())
 		{
-			return;
-		}
-		expire_timer.reset();
+			http_utils::reply res;
+			res.status_code = int(http_utils::reply::status_type::bad_request);
 
-		do_write(http_utils::common::create_response::bad_request("timeout", req_));
+			res.add_header("Content-Type", "text/html");
+			res.content = json(reply).dump();
+			m_rep_cb(res);
+		}
+		else
+		{
+			route_request();
+		}
 	}
 
-	chat_listener::chat_listener(net::io_context& ioc,
-		tcp::endpoint endpoint,
-		logger_t in_logger,
-		std::uint32_t expire_time,
+
+	chat_listener::chat_listener(asio::io_context& io_context, std::shared_ptr<spdlog::logger> in_logger, const std::string& address, const std::string& port,
 		chat_manager& in_chat_manager,
 		chat_sync_adpator& in_sync_adaptor)
-		: http_utils::server::listener(ioc, std::move(endpoint), std::move(in_logger), expire_time)
+		: http_utils::http_server(io_context,  std::move(in_logger), address, port)
 		, m_chat_manager(in_chat_manager)
 		, m_sync_adaptor(in_sync_adaptor)
+		, m_ioc2(io_context)
 	{
-		tick_timer = std::make_shared<boost::asio::steady_timer>(ioc.get_executor(), std::chrono::seconds(1));
-		tick_timer->async_wait([this](const boost::system::error_code& e) {
+		tick_timer = std::make_shared<asio::steady_timer>(m_ioc2.get_executor(), std::chrono::seconds(1));
+		tick_timer->async_wait([this](const asio::error_code& e) {
 			this->tick();
 			});
 	}
 
-	std::shared_ptr<http_utils::server::session> chat_listener::make_session(tcp::socket&& socket)
-	{
-		return std::make_shared<chat_session>(std::move(socket), logger, expire_time, m_chat_manager);
-	}
+
 
 	void chat_listener::tick()
 	{
@@ -290,12 +282,18 @@ namespace spiritsaway::system::chat
 		m_sync_adaptor.save_results.clear();
 		if (m_tick_counter % 10 == 0)
 		{
-			logger->info("tick save {} ", json(m_chat_manager.tick_save(10)).dump());
-			logger->info("tick expire {} ", json(m_chat_manager.tick_expire(10)).dump());
+			m_logger->info("tick save {} ", json(m_chat_manager.tick_save(10)).dump());
+			m_logger->info("tick expire {} ", json(m_chat_manager.tick_expire(10)).dump());
 		}
-		tick_timer = std::make_shared<boost::asio::steady_timer>(ioc_.get_executor(), std::chrono::seconds(1));
-		tick_timer->async_wait([this](const boost::system::error_code& e) {
+		tick_timer = std::make_shared<asio::steady_timer>(m_ioc2.get_executor(), std::chrono::seconds(1));
+		tick_timer->async_wait([this](const asio::error_code& e) {
 			this->tick();
 			});
+	}
+
+	void chat_listener::handle_request(const http_utils::request& req, http_utils::reply_handler rep_cb)
+	{
+		auto cur_chat_session = std::make_shared<chat_session>(req, rep_cb, m_logger, m_chat_manager);
+		cur_chat_session->run();
 	}
 }
