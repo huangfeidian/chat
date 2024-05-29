@@ -10,9 +10,9 @@ namespace spiritsaway::system::chat
 {
 	using namespace spiritsaway;
 	using json = nlohmann::json;
-
-	namespace net = asio;            // from <boost/asio.hpp>
-	using tcp = asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
+	namespace asio = boost::asio;
+	namespace net = boost::asio;            // from <boost/asio.hpp>
+	using tcp = boost::asio::ip::tcp;       // from <boost/asio/ip/tcp.hpp>
 	using logger_t = std::shared_ptr<spdlog::logger>;
 
 	class chat_db

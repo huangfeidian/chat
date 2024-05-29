@@ -257,7 +257,7 @@ namespace spiritsaway::system::chat
 		, m_ioc2(io_context)
 	{
 		tick_timer = std::make_shared<asio::steady_timer>(m_ioc2.get_executor(), std::chrono::seconds(1));
-		tick_timer->async_wait([this](const asio::error_code& e) {
+		tick_timer->async_wait([this](const boost::system::error_code& e) {
 			this->tick();
 			});
 	}
@@ -286,7 +286,7 @@ namespace spiritsaway::system::chat
 			m_logger->info("tick expire {} ", json(m_chat_manager.tick_expire(10)).dump());
 		}
 		tick_timer = std::make_shared<asio::steady_timer>(m_ioc2.get_executor(), std::chrono::seconds(1));
-		tick_timer->async_wait([this](const asio::error_code& e) {
+		tick_timer->async_wait([this](const boost::system::error_code& e) {
 			this->tick();
 			});
 	}
