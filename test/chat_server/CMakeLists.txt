@@ -19,7 +19,7 @@ INCLUDE_DIRECTORIES(${spdlog_include_dirs})
 find_package(http_utils CONFIG REQUIRED)
 INCLUDE_DIRECTORIES(${http_utils_include_dirs})
 find_package(Threads REQUIRED)
-
+find_package(Boost 1.71.0 REQUIRED COMPONENTS  system date_time)
 
 
 add_executable(chat_server ${CMAKE_CURRENT_SOURCE_DIR}/chat_server.cpp ${CMAKE_CURRENT_SOURCE_DIR}/server_main.cpp)
