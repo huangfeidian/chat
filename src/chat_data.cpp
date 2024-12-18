@@ -3,17 +3,17 @@
 namespace spiritsaway::system::chat
 {
 
-	chat_data_proxy::chat_data_proxy(const std::string chat_key, chat_data_init_func init_func, chat_data_load_func load_func, chat_data_save_func save_func, std::uint32_t record_num_in_doc)
+	chat_data_proxy::chat_data_proxy(const std::string chat_key, chat_data_init_func init_func, chat_data_load_func load_func, chat_data_save_func save_func, chat_record_seq_t record_num_in_doc)
 		: m_chat_key(chat_key), m_init_func(init_func), m_load_func(load_func), m_save_func(save_func)
 		, m_record_num_in_doc(record_num_in_doc)
 		, m_create_ts(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
 	{
 		json::object_t temp_query;
 		temp_query["chat_key"] = m_chat_key;
-		temp_query["doc_seq"] = std::numeric_limits<std::uint32_t>::max();
+		temp_query["doc_seq"] = std::numeric_limits<chat_record_seq_t>::max();
 		json::object_t temp_doc;
 		temp_doc["chat_key"] = m_chat_key;
-		temp_doc["doc_seq"] = std::numeric_limits<std::uint32_t>::max();
+		temp_doc["doc_seq"] = std::numeric_limits<chat_record_seq_t>::max();
 		temp_doc["next_seq"] = 0;
 		m_init_func(m_chat_key, temp_query, temp_doc);
 	}
@@ -77,11 +77,11 @@ namespace spiritsaway::system::chat
 		return true;
 	}
 
-	void chat_data_proxy::check_fetch_complete(std::uint32_t cur_doc_seq)
+	void chat_data_proxy::check_fetch_complete(chat_record_seq_t cur_doc_seq)
 	{
-		std::uint32_t cur_doc_record_seq_begin = cur_doc_seq * m_record_num_in_doc;
-		std::uint32_t cur_doc_record_seq_end = cur_doc_record_seq_begin + m_record_num_in_doc;
-		std::uint32_t has_cb_invoked = 0;
+		chat_record_seq_t cur_doc_record_seq_begin = cur_doc_seq * m_record_num_in_doc;
+		chat_record_seq_t cur_doc_record_seq_end = cur_doc_record_seq_begin + m_record_num_in_doc;
+		chat_record_seq_t has_cb_invoked = 0;
 		std::vector<chat_record> cur_fetch_result;
 		for (int i = 0; i < m_fetch_tasks.size(); i++)
 		{
@@ -96,14 +96,14 @@ namespace spiritsaway::system::chat
 				continue;
 			}
 			cur_cb.fetch_cb(cur_fetch_result);
-			cur_cb.chat_seq_begin = std::numeric_limits<std::uint32_t>::max();
+			cur_cb.chat_seq_begin = std::numeric_limits<chat_record_seq_t>::max();
 			has_cb_invoked++;
 		}
 		std::vector<chat_fetch_task> remain_fetch_cbs;
 		remain_fetch_cbs.reserve(m_fetch_tasks.size() - has_cb_invoked);
 		for (auto &one_cb : m_fetch_tasks)
 		{
-			if (one_cb.chat_seq_begin == std::numeric_limits<std::uint32_t>::max())
+			if (one_cb.chat_seq_begin == std::numeric_limits<chat_record_seq_t>::max())
 			{
 				continue;
 			}
@@ -118,6 +118,7 @@ namespace spiritsaway::system::chat
 		cur_chat_record.detail = chat_info;
 		cur_chat_record.from = from_player_id;
 		cur_chat_record.seq = m_next_seq;
+		cur_chat_record.ts = std::chrono::steady_clock::now().time_since_epoch().count();
 		m_loaded_docs.rbegin()->second.records.push_back(std::move(cur_chat_record));
 		m_next_seq++;
 		m_dirty_count++;
@@ -142,7 +143,7 @@ namespace spiritsaway::system::chat
 		temp_query["doc_seq"] = m_loaded_docs.rbegin()->second.doc_seq;
 		json cur_doc_json = m_loaded_docs.rbegin()->second;
 		m_save_func(m_chat_key, temp_query, cur_doc_json);
-		temp_query["doc_seq"] = std::numeric_limits<std::uint32_t>::max();
+		temp_query["doc_seq"] = std::numeric_limits<chat_record_seq_t>::max();
 		json cur_meta_doc = temp_query;
 		cur_meta_doc["next_seq"] = m_next_seq;
 		m_save_func(m_chat_key, temp_query, cur_meta_doc);
@@ -150,26 +151,26 @@ namespace spiritsaway::system::chat
 		return true;
 	}
 
-	std::uint32_t chat_data_proxy::add_chat(const std::string &from_player_id, const json::object_t &chat_info)
+	chat_record_seq_t chat_data_proxy::add_chat(const std::string &from_player_id, const json::object_t &chat_info)
 	{
 		if (!ready())
 		{
-			return std::numeric_limits<std::uint32_t>::max();
+			return std::numeric_limits<chat_record_seq_t>::max();
 		}
-		if (m_next_seq == std::numeric_limits<std::uint32_t>::max())
+		if (m_next_seq == std::numeric_limits<chat_record_seq_t>::max())
 		{
-			return std::numeric_limits<std::uint32_t>::max();
+			return std::numeric_limits<chat_record_seq_t>::max();
 		}
 		auto cur_record_seq = m_next_seq;
 		add_chat_impl(from_player_id, chat_info);
 		return cur_record_seq;
 	}
 
-	void chat_data_proxy::add_chat(const std::string &from_player_id, const json::object_t &chat_info, std::function<void(std::uint32_t)> add_cb)
+	void chat_data_proxy::add_chat(const std::string &from_player_id, const json::object_t &chat_info, std::function<void(chat_record_seq_t)> add_cb)
 	{
 		if (ready())
 		{
-			if (m_next_seq != std::numeric_limits<std::uint32_t>::max())
+			if (m_next_seq != std::numeric_limits<chat_record_seq_t>::max())
 			{
 				auto cur_record_seq = m_next_seq;
 				add_chat_impl(from_player_id, chat_info);
@@ -178,7 +179,7 @@ namespace spiritsaway::system::chat
 			}
 			else
 			{
-				add_cb(std::numeric_limits<std::uint32_t>::max());
+				add_cb(std::numeric_limits<chat_record_seq_t>::max());
 			}
 		}
 		else
@@ -191,7 +192,7 @@ namespace spiritsaway::system::chat
 		}
 	}
 
-	bool chat_data_proxy::fetch_record_impl(std::uint32_t chat_seq_begin, std::uint32_t chat_seq_end, std::vector<chat_record> &cur_fetch_result) const
+	bool chat_data_proxy::fetch_record_impl(chat_record_seq_t chat_seq_begin, chat_record_seq_t chat_seq_end, std::vector<chat_record> &cur_fetch_result) const
 	{
 		auto cur_fetch_doc_begin = chat_seq_begin / m_record_num_in_doc;
 		auto cur_fetch_doc_end = chat_seq_end / m_record_num_in_doc + 1;
@@ -229,7 +230,7 @@ namespace spiritsaway::system::chat
 		}
 		return true;
 	}
-	bool chat_data_proxy::fetch_records(std::uint32_t seq_begin, std::uint32_t seq_end, std::vector<chat_record> &result) const
+	bool chat_data_proxy::fetch_records(chat_record_seq_t seq_begin, chat_record_seq_t seq_end, std::vector<chat_record> &result) const
 	{
 		if (seq_end < seq_begin)
 		{
@@ -248,7 +249,7 @@ namespace spiritsaway::system::chat
 		return fetch_record_impl(seq_begin, seq_end, result);
 	}
 
-	void chat_data_proxy::fetch_records(std::uint32_t seq_begin, std::uint32_t seq_end, std::function<void(const std::vector<chat_record> &)> fetch_cb)
+	void chat_data_proxy::fetch_records(chat_record_seq_t seq_begin, chat_record_seq_t seq_end, std::function<void(const std::vector<chat_record> &)> fetch_cb)
 	{
 		std::vector<chat_record> temp_result;
 		if (seq_end < seq_begin)

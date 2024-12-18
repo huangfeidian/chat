@@ -2,7 +2,7 @@
 
 namespace spiritsaway::system::chat
 {
-	chat_manager::chat_manager(chat_data_init_func init_func, chat_data_load_func load_func, chat_data_save_func save_func, std::uint32_t record_num_in_doc)
+	chat_manager::chat_manager(chat_data_init_func init_func, chat_data_load_func load_func, chat_data_save_func save_func, chat_record_seq_t record_num_in_doc)
 		: m_record_num_in_doc(record_num_in_doc)
 		, m_init_func(init_func)
 		, m_save_func(save_func)
@@ -26,13 +26,13 @@ namespace spiritsaway::system::chat
 		}
 		return cur_chat_proxy;
 	}
-	void chat_manager::add_msg(const std::string& chat_key, const std::string& from, const json::object_t& msg,  std::function<void(std::uint32_t)> seq_cb)
+	void chat_manager::add_msg(const std::string& chat_key, const std::string& from, const json::object_t& msg,  std::function<void(chat_record_seq_t)> seq_cb)
 	{
 		auto cur_chat_proxy = get_or_create_chat_data(chat_key);
 		if (!cur_chat_proxy->ready())
 		{
 			
-			cur_chat_proxy->add_chat(from, msg, [=](std::uint32_t cur_seq)
+			cur_chat_proxy->add_chat(from, msg, [=](chat_record_seq_t cur_seq)
 				{
 					add_msg_cb(cur_chat_proxy, cur_seq, seq_cb);
 				});
@@ -44,7 +44,7 @@ namespace spiritsaway::system::chat
 		}
 	}
 
-	void chat_manager::fetch_history_num(const std::string& chat_key, std::function<void(std::uint32_t)>  fetch_cb)
+	void chat_manager::fetch_history_num(const std::string& chat_key, std::function<void(chat_record_seq_t)>  fetch_cb)
 	{
 		auto cur_chat_proxy = get_or_create_chat_data(chat_key);
 		if (!cur_chat_proxy->ready())
@@ -60,7 +60,7 @@ namespace spiritsaway::system::chat
 		}
 	}
 
-	void chat_manager::fetch_history(const std::string& chat_key, std::uint32_t seq_begin, std::uint32_t seq_end, std::function<void(const std::vector<chat_record>&)> fetch_cb)
+	void chat_manager::fetch_history(const std::string& chat_key, chat_record_seq_t seq_begin, chat_record_seq_t seq_end, std::function<void(const std::vector<chat_record>&)> fetch_cb)
 	{
 		auto cur_chat_proxy = get_or_create_chat_data(chat_key);
 		if (!cur_chat_proxy->ready())
@@ -76,12 +76,12 @@ namespace spiritsaway::system::chat
 		}
 	}
 
-	void chat_manager::fetch_history_num_cb(chat_data_proxy& proxy_data, std::function<void(std::uint32_t)> num_cb)
+	void chat_manager::fetch_history_num_cb(chat_data_proxy& proxy_data, std::function<void(chat_record_seq_t)> num_cb)
 	{
 		num_cb(proxy_data.next_seq());
 	}
 
-	void chat_manager::add_msg_cb(std::shared_ptr<chat_data_proxy> cur_data, std::uint32_t msg_seq, std::function<void(std::uint32_t)> seq_cb)
+	void chat_manager::add_msg_cb(std::shared_ptr<chat_data_proxy> cur_data, chat_record_seq_t msg_seq, std::function<void(chat_record_seq_t)> seq_cb)
 	{
 		if (cur_data->dirty_count() == 1)
 		{
@@ -90,11 +90,11 @@ namespace spiritsaway::system::chat
 		seq_cb(msg_seq);
 	}
 
-	std::vector<std::string> chat_manager::tick_save(std::uint32_t max_num)
+	std::vector<std::string> chat_manager::tick_save(chat_record_seq_t max_num)
 	{
 		std::vector<std::string> result;
 		std::reverse(m_dirty_chat_datas.begin(), m_dirty_chat_datas.end());
-		std::uint32_t result_num = 0;
+		chat_record_seq_t result_num = 0;
 		for (int i = 0; i < max_num; i++)
 		{
 			if (m_dirty_chat_datas.empty())
@@ -117,7 +117,7 @@ namespace spiritsaway::system::chat
 		return result;
 	}
 
-	std::vector<std::string> chat_manager::tick_expire(std::uint32_t max_num)
+	std::vector<std::string> chat_manager::tick_expire(chat_record_seq_t max_num)
 	{
 		std::vector<const chat_data_proxy*> result_expire_datas;
 		for (const auto& one_pair : m_chat_datas)
@@ -132,7 +132,7 @@ namespace spiritsaway::system::chat
 				return a->m_create_ts > b->m_create_ts;
 			});
 		std::vector<std::string> result;
-		std::uint32_t result_num = 0;
+		chat_record_seq_t result_num = 0;
 		for (int i = 0; i < max_num; i++)
 		{
 			if (result_expire_datas.empty())

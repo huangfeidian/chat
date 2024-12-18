@@ -18,8 +18,8 @@ namespace spiritsaway::system::chat
 	class chat_db
 	{
 		std::vector<json::object_t> m_content;
-		std::uint32_t find_one_idx(const json::object_t& filter) const;
-		std::vector<std::uint32_t> find_all_idx(const json::object_t& filter) const;
+		chat_record_seq_t find_one_idx(const json::object_t& filter) const;
+		std::vector<chat_record_seq_t> find_all_idx(const json::object_t& filter) const;
 	public:
 		std::vector<json::object_t> find_all(const json::object_t& filter) const;
 		json::object_t find_one(const json::object_t& filter) const;
@@ -40,8 +40,8 @@ namespace spiritsaway::system::chat
 		std::string from;
 		std::string chat_key;
 		std::string cur_cmd;
-		std::uint32_t seq_begin = 0;
-		std::uint32_t seq_end = 0;
+		chat_record_seq_t seq_begin = 0;
+		chat_record_seq_t seq_end = 0;
 		json::object_t msg;
 		json::object_t reply;
 		logger_t m_logger;

@@ -2,9 +2,9 @@
 
 namespace spiritsaway::system::chat
 {
-	std::uint32_t chat_db::find_one_idx(const json::object_t& filter) const
+	chat_record_seq_t chat_db::find_one_idx(const json::object_t& filter) const
 	{
-		for (std::uint32_t i = 0; i < m_content.size(); i++)
+		for (std::uint64_t i = 0; i < m_content.size(); i++)
 		{
 			const auto& one_data = m_content[i];
 			bool all_match = true;
@@ -27,14 +27,14 @@ namespace spiritsaway::system::chat
 				return i;
 			}
 		}
-		return std::numeric_limits<std::uint32_t>::max();
+		return std::numeric_limits<chat_record_seq_t>::max();
 	}
 
-	std::vector<std::uint32_t> chat_db::find_all_idx(const json::object_t& filter) const
+	std::vector<chat_record_seq_t> chat_db::find_all_idx(const json::object_t& filter) const
 	{
-		std::vector<std::uint32_t> result;
+		std::vector<chat_record_seq_t> result;
 		result.reserve(8);
-		for (std::uint32_t i = 0; i < m_content.size(); i++)
+		for (std::uint64_t i = 0; i < m_content.size(); i++)
 		{
 			const auto& one_data = m_content[i];
 			bool all_match = true;
@@ -69,7 +69,7 @@ namespace spiritsaway::system::chat
 	json::object_t chat_db::find_one(const json::object_t& filter) const
 	{
 		auto cur_idx = find_one_idx(filter);
-		if (cur_idx == std::numeric_limits<std::uint32_t>::max())
+		if (cur_idx == std::numeric_limits<chat_record_seq_t>::max())
 		{
 			return {};
 		}
@@ -79,7 +79,7 @@ namespace spiritsaway::system::chat
 	void chat_db::update_or_create(const json::object_t& filter, const json::object_t& doc)
 	{
 		auto one_idx = find_one_idx(filter);
-		if (one_idx == std::numeric_limits<std::uint32_t>::max())
+		if (one_idx == std::numeric_limits<chat_record_seq_t>::max())
 		{
 			m_content.push_back(doc);
 		}
@@ -95,7 +95,7 @@ namespace spiritsaway::system::chat
 	json::object_t chat_db::find_or_create(const json::object_t& filter, const json::object_t& doc)
 	{
 		auto one_idx = find_one_idx(filter);
-		if (one_idx != std::numeric_limits<std::uint32_t>::max())
+		if (one_idx != std::numeric_limits<chat_record_seq_t>::max())
 		{
 			return m_content[one_idx];
 			
@@ -181,7 +181,7 @@ namespace spiritsaway::system::chat
 		auto self = shared_from_this();
 		if (cur_cmd == "add")
 		{
-			m_chat_manager.add_msg(chat_key, from, msg, [self, this](std::uint32_t cur_seq)
+			m_chat_manager.add_msg(chat_key, from, msg, [self, this](chat_record_seq_t cur_seq)
 				{
 					reply["seq"] = cur_seq;
 					finish_task_1();
@@ -197,7 +197,7 @@ namespace spiritsaway::system::chat
 		}
 		else if (cur_cmd == "meta")
 		{
-			m_chat_manager.fetch_history_num(chat_key, [self, this](std::uint32_t num)
+			m_chat_manager.fetch_history_num(chat_key, [self, this](chat_record_seq_t num)
 				{
 					reply["num"] = num;
 					finish_task_1();
