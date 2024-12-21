@@ -17,7 +17,7 @@ namespace spiritsaway::system::chat
 		std::shared_ptr<chat_data_proxy> get_or_create_chat_data(const std::string& chat_key);
 	public:
 		chat_manager(chat_data_init_func init_func, chat_data_load_func load_func, chat_data_save_func save_func, chat_record_seq_t record_num_in_doc = 50);
-		void add_msg(const std::string& chat_key, const std::string& from, const json::object_t& msg, std::function<void(chat_record_seq_t)> seq_cb);
+		void add_msg(const std::string& chat_key, const std::string& from, const json::object_t& msg, std::uint64_t chat_ts, std::function<void(chat_record_seq_t)> seq_cb);
 
 		void fetch_history(const std::string& chat_key, chat_record_seq_t seq_begin, chat_record_seq_t seq_end, std::function<void(const std::vector<chat_record>&)> fetch_cb);
 		void fetch_history_num(const std::string& chat_key, std::function<void(chat_record_seq_t)>  fetch_cb);

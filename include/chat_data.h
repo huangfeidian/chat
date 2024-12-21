@@ -46,6 +46,7 @@ namespace spiritsaway::system::chat
 		{
 			std::string from;
 			json::object_t detail;
+			std::uint64_t chat_ts;
 			std::function<void(chat_record_seq_t)> add_cb;
 		};
 		chat_data_init_func m_init_func;
@@ -63,7 +64,7 @@ namespace spiritsaway::system::chat
 	private:
 		void on_init();
 		void check_fetch_complete(chat_record_seq_t cur_doc_seq);
-		void add_chat_impl(const std::string& from_player_id, const json::object_t& chat_info);
+		void add_chat_impl(const std::string& from_player_id, const json::object_t& chat_info, std::uint64_t chat_ts);
 		bool fetch_record_impl(chat_record_seq_t seq_min, chat_record_seq_t seq_end, std::vector<chat_record>& result) const;
 	public:
 		chat_record_seq_t dirty_count() const
@@ -79,8 +80,8 @@ namespace spiritsaway::system::chat
 		bool on_doc_fetch(const json::object_t& cur_doc);
 		bool fetch_records(chat_record_seq_t seg_begin, chat_record_seq_t seq_end, std::vector<chat_record>& result) const;
 		void fetch_records(chat_record_seq_t seq_begin, chat_record_seq_t seq_end, std::function<void(const std::vector<chat_record>&)> fetch_cb);
-		chat_record_seq_t add_chat(const std::string& from_player_id, const json::object_t& chat_info);
-		void add_chat(const std::string& from_player_id, const json::object_t& chat_info, std::function<void(chat_record_seq_t)> add_cb);
+		chat_record_seq_t add_chat(const std::string& from_player_id, const json::object_t& chat_info, std::uint64_t chat_ts);
+		void add_chat(const std::string& from_player_id, const json::object_t& chat_info, std::uint64_t chat_ts, std::function<void(chat_record_seq_t)> add_cb);
 		bool save();
 
 		bool has_add_task() const

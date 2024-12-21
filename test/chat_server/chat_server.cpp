@@ -181,7 +181,7 @@ namespace spiritsaway::system::chat
 		auto self = shared_from_this();
 		if (cur_cmd == "add")
 		{
-			m_chat_manager.add_msg(chat_key, from, msg, [self, this](chat_record_seq_t cur_seq)
+			m_chat_manager.add_msg(chat_key, from, msg, std::chrono::steady_clock::now().time_since_epoch().count(), [self, this](chat_record_seq_t cur_seq)
 				{
 					reply["seq"] = cur_seq;
 					finish_task_1();

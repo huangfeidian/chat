@@ -112,13 +112,13 @@ namespace spiritsaway::system::chat
 		std::swap(m_fetch_tasks, remain_fetch_cbs);
 	}
 
-	void chat_data_proxy::add_chat_impl(const std::string &from_player_id, const json::object_t &chat_info)
+	void chat_data_proxy::add_chat_impl(const std::string &from_player_id, const json::object_t &chat_info, std::uint64_t chat_ts)
 	{
 		chat_record cur_chat_record;
 		cur_chat_record.detail = chat_info;
 		cur_chat_record.from = from_player_id;
 		cur_chat_record.seq = m_next_seq;
-		cur_chat_record.ts = std::chrono::steady_clock::now().time_since_epoch().count();
+		cur_chat_record.ts = chat_ts;
 		m_loaded_docs.rbegin()->second.records.push_back(std::move(cur_chat_record));
 		m_next_seq++;
 		m_dirty_count++;
@@ -151,7 +151,7 @@ namespace spiritsaway::system::chat
 		return true;
 	}
 
-	chat_record_seq_t chat_data_proxy::add_chat(const std::string &from_player_id, const json::object_t &chat_info)
+	chat_record_seq_t chat_data_proxy::add_chat(const std::string &from_player_id, const json::object_t &chat_info, std::uint64_t chat_ts)
 	{
 		if (!ready())
 		{
@@ -162,18 +162,18 @@ namespace spiritsaway::system::chat
 			return std::numeric_limits<chat_record_seq_t>::max();
 		}
 		auto cur_record_seq = m_next_seq;
-		add_chat_impl(from_player_id, chat_info);
+		add_chat_impl(from_player_id, chat_info, chat_ts);
 		return cur_record_seq;
 	}
 
-	void chat_data_proxy::add_chat(const std::string &from_player_id, const json::object_t &chat_info, std::function<void(chat_record_seq_t)> add_cb)
+	void chat_data_proxy::add_chat(const std::string &from_player_id, const json::object_t &chat_info, std::uint64_t chat_ts, std::function<void(chat_record_seq_t)> add_cb)
 	{
 		if (ready())
 		{
 			if (m_next_seq != std::numeric_limits<chat_record_seq_t>::max())
 			{
 				auto cur_record_seq = m_next_seq;
-				add_chat_impl(from_player_id, chat_info);
+				add_chat_impl(from_player_id, chat_info, chat_ts);
 				add_cb(cur_record_seq);
 				return;
 			}
@@ -188,6 +188,7 @@ namespace spiritsaway::system::chat
 			cur_add_task.add_cb = add_cb;
 			cur_add_task.detail = chat_info;
 			cur_add_task.from = from_player_id;
+			cur_add_task.chat_ts = chat_ts;
 			m_add_tasks.push_back(std::move(cur_add_task));
 		}
 	}
@@ -306,7 +307,7 @@ namespace spiritsaway::system::chat
 		for (auto &one_add_task : m_add_tasks)
 		{
 			auto cur_add_seq = m_next_seq;
-			add_chat_impl(one_add_task.from, one_add_task.detail);
+			add_chat_impl(one_add_task.from, one_add_task.detail, one_add_task.chat_ts);
 			one_add_task.add_cb(cur_add_seq);
 		}
 		m_add_tasks.clear();

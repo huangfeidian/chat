@@ -26,20 +26,20 @@ namespace spiritsaway::system::chat
 		}
 		return cur_chat_proxy;
 	}
-	void chat_manager::add_msg(const std::string& chat_key, const std::string& from, const json::object_t& msg,  std::function<void(chat_record_seq_t)> seq_cb)
+	void chat_manager::add_msg(const std::string& chat_key, const std::string& from, const json::object_t& msg, std::uint64_t chat_ts, std::function<void(chat_record_seq_t)> seq_cb)
 	{
 		auto cur_chat_proxy = get_or_create_chat_data(chat_key);
 		if (!cur_chat_proxy->ready())
 		{
 			
-			cur_chat_proxy->add_chat(from, msg, [=](chat_record_seq_t cur_seq)
+			cur_chat_proxy->add_chat(from, msg, chat_ts, [=](chat_record_seq_t cur_seq)
 				{
 					add_msg_cb(cur_chat_proxy, cur_seq, seq_cb);
 				});
 		}
 		else
 		{
-			auto cur_seq = cur_chat_proxy->add_chat(from, msg);
+			auto cur_seq = cur_chat_proxy->add_chat(from, msg, chat_ts);
 			add_msg_cb(cur_chat_proxy, cur_seq, seq_cb);
 		}
 	}
