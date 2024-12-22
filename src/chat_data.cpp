@@ -37,9 +37,11 @@ namespace spiritsaway::system::chat
 		{
 			m_is_ready = true;
 			chat_doc temp_doc;
-			temp_doc.doc_seq = 0;
+			auto cur_doc_seq = m_next_seq / m_record_num_in_doc;
+			temp_doc.doc_seq = cur_doc_seq;
 			temp_doc.chat_key = m_chat_key;
-			m_loaded_docs[0] = std::move(temp_doc);
+			temp_doc.ttl = m_default_loaded_doc_ttl;
+			m_loaded_docs[cur_doc_seq] = std::move(temp_doc);
 			on_ready();
 			return true;
 		}
@@ -145,6 +147,7 @@ namespace spiritsaway::system::chat
 			chat_doc new_chat_doc;
 			new_chat_doc.chat_key = m_chat_key;
 			new_chat_doc.doc_seq = m_loaded_docs.rbegin()->second.doc_seq + 1;
+			new_chat_doc.ttl = m_default_loaded_doc_ttl;
 			m_loaded_docs[new_chat_doc.doc_seq] = std::move(new_chat_doc);
 		}
 	}
