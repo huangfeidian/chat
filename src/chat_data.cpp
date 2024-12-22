@@ -256,6 +256,10 @@ namespace spiritsaway::system::chat
 		{
 			return fetch_cb(temp_result);
 		}
+		if (seq_end - seq_begin >= m_fetch_record_max_num)
+		{
+			return fetch_cb(temp_result);
+		}
 		if (ready()) // 如果已经ready了
 		{
 			if (seq_end >= m_next_seq) // 如果最大序列号大于最新序列号 说明请求非法
