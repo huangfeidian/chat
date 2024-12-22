@@ -40,12 +40,12 @@ int main(int argc, char* argv[])
 	auto cur_logger = create_logger("server");
 	chat_db cur_chat_data;
 	chat_sync_adpator cur_sync_apdator;
-	chat_data_init_func init_func = [&](const std::string& chat_key, const json::object_t& filter, const json::object_t& doc)
+	chat_data_load_meta_func init_func = [&](const std::string& chat_key, const json::object_t& filter, const json::object_t& doc)
 	{
 		cur_sync_apdator.init_results.emplace_back(chat_key, cur_chat_data.find_or_create(filter, doc));
 		cur_logger->info("init key {} filter {} with result {}", chat_key, json(filter).dump(), json(cur_sync_apdator.init_results.back().second).dump());
 	};
-	chat_data_load_func load_func = [&](const std::string& chat_key, const json::object_t& filter)
+	chat_data_load_normal_func load_func = [&](const std::string& chat_key, const json::object_t& filter)
 	{
 		cur_logger->info("load key {} filter {}", chat_key, json(filter).dump());
 		cur_sync_apdator.find_one_results.emplace_back(chat_key, cur_chat_data.find_one(filter));

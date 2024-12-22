@@ -271,13 +271,13 @@ namespace spiritsaway::system::chat
 		m_sync_adaptor.init_results.clear();
 		for (const auto& one_pair : init_result)
 		{
-			m_chat_manager.on_init(one_pair.first, one_pair.second);
+			m_chat_manager.on_meta_doc_loaded(one_pair.first, one_pair.second);
 		}
 		auto find_result = m_sync_adaptor.find_one_results;
 		m_sync_adaptor.find_one_results.clear();
 		for (const auto& one_pair : find_result)
 		{
-			m_chat_manager.on_load(one_pair.first, one_pair.second);
+			m_chat_manager.on_normal_doc_loaded(one_pair.first, one_pair.second);
 		}
 		m_sync_adaptor.save_results.clear();
 		if (m_tick_counter % 10 == 0)

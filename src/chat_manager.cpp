@@ -2,9 +2,9 @@
 
 namespace spiritsaway::system::chat
 {
-	chat_manager::chat_manager(chat_data_init_func init_func, chat_data_load_func load_func, chat_data_save_func save_func, chat_record_seq_t record_num_in_doc)
+	chat_manager::chat_manager(chat_data_load_meta_func init_func, chat_data_load_normal_func load_func, chat_data_save_func save_func, chat_record_seq_t record_num_in_doc)
 		: m_record_num_in_doc(record_num_in_doc)
-		, m_init_func(init_func)
+		, m_load_meta_func(init_func)
 		, m_save_func(save_func)
 		, m_load_func(load_func)
 	{
@@ -17,7 +17,7 @@ namespace spiritsaway::system::chat
 		auto cur_proxy_iter = m_chat_datas.find(chat_key);
 		if (cur_proxy_iter == m_chat_datas.end())
 		{
-			cur_chat_proxy = std::make_shared<chat_data_proxy>(chat_key, m_init_func, m_load_func, m_save_func, m_record_num_in_doc);
+			cur_chat_proxy = std::make_shared<chat_data_proxy>(chat_key, m_load_meta_func, m_load_func, m_save_func, m_record_num_in_doc);
 			m_chat_datas[chat_key] = cur_chat_proxy;
 		}
 		else
@@ -49,7 +49,7 @@ namespace spiritsaway::system::chat
 		auto cur_chat_proxy = get_or_create_chat_data(chat_key);
 		if (!cur_chat_proxy->ready())
 		{
-			cur_chat_proxy->add_init_cb([=](chat_data_proxy& cur_chat_data)
+			cur_chat_proxy->add_ready_cb([=](chat_data_proxy& cur_chat_data)
 				{
 					fetch_history_num_cb(cur_chat_data, fetch_cb);
 				});
@@ -63,17 +63,7 @@ namespace spiritsaway::system::chat
 	void chat_manager::fetch_history(const std::string& chat_key, chat_record_seq_t seq_begin, chat_record_seq_t seq_end, std::function<void(const std::vector<chat_record>&)> fetch_cb)
 	{
 		auto cur_chat_proxy = get_or_create_chat_data(chat_key);
-		if (!cur_chat_proxy->ready())
-		{
-			cur_chat_proxy->fetch_records(seq_begin, seq_end, fetch_cb);
-		}
-		else
-		{
-			std::vector<chat_record> result;
-
-			cur_chat_proxy->fetch_records(seq_begin, seq_end, result);
-			fetch_cb(result);
-		}
+		cur_chat_proxy->fetch_records(seq_begin, seq_end, fetch_cb);
 	}
 
 	void chat_manager::fetch_history_num_cb(chat_data_proxy& proxy_data, std::function<void(chat_record_seq_t)> num_cb)
@@ -122,6 +112,7 @@ namespace spiritsaway::system::chat
 		std::vector<const chat_data_proxy*> result_expire_datas;
 		for (const auto& one_pair : m_chat_datas)
 		{
+			one_pair.second->expire_loaded();
 			if (one_pair.second->dirty_count() == 0 && one_pair.second->safe_to_remove())
 			{
 				result_expire_datas.push_back(one_pair.second.get());
@@ -148,23 +139,23 @@ namespace spiritsaway::system::chat
 		return result;
 	}
 
-	void chat_manager::on_init(const std::string& chat_key, const json::object_t& doc)
+	void chat_manager::on_meta_doc_loaded(const std::string& chat_key, const json::object_t& doc)
 	{
 		auto cur_iter = m_chat_datas.find(chat_key);
 		if (cur_iter == m_chat_datas.end())
 		{
 			return;
 		}
-		cur_iter->second->on_init(doc);
+		cur_iter->second->on_meta_doc_loaded(doc);
 	}
-	void chat_manager::on_load(const std::string& chat_key, const json::object_t& doc)
+	void chat_manager::on_normal_doc_loaded(const std::string& chat_key, const json::object_t& doc)
 	{
 		auto cur_iter = m_chat_datas.find(chat_key);
 		if (cur_iter == m_chat_datas.end())
 		{
 			return;
 		}
-		cur_iter->second->on_doc_fetch(doc);
+		cur_iter->second->on_normal_doc_loaded(doc);
 	}
 
 
