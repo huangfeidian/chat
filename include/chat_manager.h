@@ -1,3 +1,4 @@
+#pragma once
 #include "chat_data.h"
 #include <unordered_map>
 

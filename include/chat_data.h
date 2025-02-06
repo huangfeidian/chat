@@ -1,4 +1,4 @@
-
+#pragma once
 #include <nlohmann/json.hpp>
 #include <set>
 #include "chat_record.h"
