@@ -19,6 +19,15 @@ FILE(GLOB_RECURSE HEADER_LISTS ${CMAKE_SOURCE_DIR}/include/*.h)
 
 add_library(${PROJECT_NAME} ${SRC_LISTS} ${HEADER_LISTS})
 target_link_libraries(${PROJECT_NAME} nlohmann_json::nlohmann_json)
+
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+  set(IS_TOPLEVEL_PROJECT TRUE)
+else()
+  set(IS_TOPLEVEL_PROJECT FALSE)
+endif()
+
+if(IS_TOPLEVEL_PROJECT)
+
 add_subdirectory(./test)
 
 foreach(p LIB BIN INCLUDE)
@@ -50,3 +59,4 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/ DESTINATION include/${PROJECT_NAM
 
 install(EXPORT ${CMAKE_PROJECT_NAME}Targets
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME})
+endif(IS_TOPLEVEL_PROJECT)
